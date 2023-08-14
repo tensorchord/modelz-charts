@@ -3,8 +3,8 @@ entries:
   modelz:
   - apiVersion: v2
     appVersion: v0.3.7
-    created: "2023-08-14T15:45:19.388782952+08:00"
-    digest: 9905fbdae1ecb1efe6cfe0c372acce9e9dd9fcca7c5ce351048271ab28a822fd
+    created: "2023-08-14T16:30:19.701450547+08:00"
+    digest: ec6e58854182dc4de10fce7b0d49855e3740f3f03fb1ebb66b9f468d7dae6dde
     home: https://tensorchord.ai
     keywords:
     - serverless
@@ -19,4 +19,4 @@ entries:
     urls:
     - https://github.com/tensorchord/modelz-charts/releases/download/modelz-0.0.1/modelz-0.0.1.tgz
     version: 0.0.1
-generated: "2023-08-14T15:45:19.388804167+08:00"
+generated: "2023-08-14T16:30:19.701475396+08:00"
