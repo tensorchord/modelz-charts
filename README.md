@@ -1,6 +1,6 @@
 # ModelZ
 
-<center><img alt="ModelZ logo" height="100" src="./images/logo-dark.svg" title="ModelZ" width="200"/></center>
+<center><img alt="ModelZ logo" height="100" src="./images/logo-light.svg" title="ModelZ" width="200"/></center>
 
 ---
 
