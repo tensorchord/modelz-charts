@@ -26,5 +26,5 @@ helm repo add modelz https://tensorchord.github.io/modelz-charts/
 **Install ModelZ**
 
 ```console
-helm install modelz modelz/modelz
+helm install modelz charts/modelz
 ```
