@@ -1,0 +1,13 @@
+{{- if  .Values.gatus.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: {{ template "modelz.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    component: gatus
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  name: gatus
+  namespace: {{ .Release.Namespace | quote }}
+{{- end }}

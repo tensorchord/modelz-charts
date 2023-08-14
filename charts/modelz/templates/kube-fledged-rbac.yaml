@@ -1,0 +1,98 @@
+{{- if .Values.kubefledged.enabled }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kubefledged
+  labels:
+    app: {{ template "modelz.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    component: kubefledged
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+rules:
+  - apiGroups:
+      - "kubefledged.io"
+    resources:
+      - imagecaches
+    verbs:
+      - get
+      - list
+      - watch
+      - update      
+  - apiGroups:
+      - "kubefledged.io"
+    resources:
+      - imagecaches/status
+    verbs:
+      - patch
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - list
+      - watch
+      - get
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - get
+      - list
+      - create
+      - update
+      - patch
+  - apiGroups:
+      - "batch"
+    resources:
+      - jobs
+    verbs:
+      - get
+      - list
+      - create
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - list
+      - watch
+      - get    
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kubefledged
+  labels:
+    app: {{ template "modelz.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    component: kubefledged
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kubefledged
+subjects:
+- kind: ServiceAccount
+  name: kubefledged
+  namespace: {{ .Release.Namespace | quote }}
+- apiGroup: rbac.authorization.k8s.io
+  kind: Group
+  name: system:nodes
+---
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kubefledged
+  labels:
+    app: {{ template "modelz.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    component: kubefledged
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+{{- end }}

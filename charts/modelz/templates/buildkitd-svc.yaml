@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: {{ template "modelz.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    component: buildkitd
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  name: buildkitd
+spec:
+  ports:
+    - port: 1234
+      protocol: TCP
+  selector:
+    app: buildkitd

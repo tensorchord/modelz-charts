@@ -1,0 +1,36 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  labels:
+    app: {{ template "modelz.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    component: apiserver
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  name: apiserver
+  namespace: {{ .Release.Namespace | quote }}
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /api/$2
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    kubernetes.io/ingress.class: "nginx"
+    {{- if .Values.ssl.enabled }}
+    acme.cert-manager.io/http01-edit-in-place: "true"
+    {{- end }}
+spec:
+  {{- if .Values.ssl.enabled }}
+  tls:
+  - hosts:
+    - {{ .Values.cloudDomain }}
+    secretName: {{ .Values.ssl.secretName.dataplane }}
+  {{- end }}
+  rules:
+  - host: {{ .Values.cloudDomain }}
+    http:
+      paths:
+      - backend:
+          service:
+            name: apiserver
+            port:
+              number: 8080
+        path: /api(/|$)(.*)
+        pathType: Prefix

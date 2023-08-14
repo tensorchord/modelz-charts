@@ -1,0 +1,22 @@
+{{- if .Values.hfserver.enabled }}
+{{- if not .Values.hfserver.localssd.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hfserver
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    app: {{ template "modelz.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    component: hfserver
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+spec:
+  storageClassName: {{ .Values.hfserver.storageClassName }}
+  resources:
+    requests:
+      storage: {{ .Values.hfserver.storage | quote }}
+  accessModes:
+    - ReadWriteOnce
+{{- end }}
+{{- end }}

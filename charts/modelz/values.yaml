@@ -1,0 +1,651 @@
+cloudDomain: "" 
+dataplaneDomain: ""
+
+httpProbe: true               # Setting to true will use HTTP for readiness and liveness probe on the ModelZ core components
+clusterRole: true            # Set to true for multiple namespaces, pro scaler and CPU/RAM metrics in ModelZ REST API
+createCRDs: true              # Set to false if applying CRDs in another way
+
+basic_auth: false              # Authentication for core components, no good reason to disable this
+rbac: true                    # Kubernetes RBAC, no good reason to disable this
+generateBasicAuth: true       # Set to false if applying credentials separately from the chart, otherwise set to true
+securityContext: true
+
+exposeServices: true
+serviceType: NodePort        # serviceType for ModelZ gateway
+async: false                  # No known reason to disable this, kept for legacy reasons
+debug: true
+
+# image pull policy for ModelZ components, can change to `IfNotPresent` in offline env
+imagePullPolicy: "Always"
+
+imagePullSecrets: dockerhub-secret
+
+registry:
+  username: modelzai
+  password: ""
+  host: https://index.docker.io/v1/
+
+priorityClass:
+  modelz: "modelz"
+  modelzValue: 10000000
+  inference: "inference"
+  inferenceValue: 1000000
+  bubbleGPUT4: "bubble-t4"
+  bubbleGPUT4Value: -1
+  bubbleCPU: "bubble-cpu"
+  bubbleCPUValue: -1
+  bubbleGPUA100: "bubble-a100"
+  bubbleGPUA100Value: -1
+  bubbleGPUL4: "bubble-l4"
+  bubbleGPUL4Value: -1
+  bubbleGPU4L4: "bubble-4-l4"
+  bubbleGPU4L4Value: -1
+
+bubble:
+  dev: true
+  enabled: true
+  cpuConfig:
+    serverResource: cpu-4c-16g
+    ladder:
+      nodesToReplicas:
+        - [ 0, 1 ]
+        - [ 8, 2 ]
+        - [ 32, 4 ]
+  gpuT4Config:
+    serverResource: nvidia-tesla-t4-4c-16g
+    ladder:
+      nodesToReplicas:
+        - [ 0, 1 ]
+        - [ 8, 2 ]
+        - [ 32, 4 ]
+  gpuL4Config:
+    serverResource: nvidia-ada-l4-8c-32g
+    ladder:
+      nodesToReplicas:
+        - [ 0, 1 ]
+        - [ 8, 2 ]
+        - [ 32, 4 ]
+  gpu4L4Config:
+    serverResource: nvidia-ada-l4-4-48c-192g
+    ladder:
+      nodesToReplicas:
+        - [ 0, 0 ]
+        - [ 8, 2 ]
+        - [ 32, 4 ]
+  gpuA100Config:
+    serverResource: nvidia-ampere-a100-40g-12c-85g
+    ladder:
+      nodesToReplicas:
+        - [ 0, 1 ]
+        - [ 8, 2 ]
+        - [ 32, 4 ]
+  gpuA100DevConfig:
+    ladder:
+      nodesToReplicas:
+        - [ 0, 0 ]
+        - [ 8, 1 ]
+        - [ 32, 1 ]
+  tolerations:
+  - key: ai.tensorchord.gpu
+    operator: Equal
+    value: "true"
+  - key: nvidia.com/gpu
+    operator: Equal
+    value: present
+  autoscalerImage: k8s.gcr.io/cpa/cluster-proportional-autoscaler:1.8.6
+  image: nginx:1.23.3
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+
+kubefledged:
+  enabled: true
+  replicas: 1
+  image: modelzai/kube-fledged-controller:v0.0.4
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+  args:
+    controllerLogLevel: INFO
+    controllerImagePullDeadlineDuration: 20m
+    controllerImageCacheRefreshFrequency: 20m
+    controllerImagePullPolicy: IfNotPresent
+    controllerServiceAccountName: ""
+    controllerImageDeleteJobHostNetwork: false
+    controllerJobPriorityClassName: ""
+    controllerJobRetentionPolicy: "delete"
+    controllerCRISocketPath: ""
+    webhookServerLogLevel: INFO
+    webhookServerCertFile: /var/run/secrets/webhook-server/tls.crt
+    webhookServerKeyFile: /var/run/secrets/webhook-server/tls.key
+    webhookServerPort: 443
+  kubefledgedCRIClientRepository: docker.io/senthilrch/kubefledged-cri-client:v0.10.0
+  busyboxImageRepository: senthilrch/busybox:1.35.0
+
+## Advanced auto-scaler for scaling inferences on RPS, CPU and in-flight requests
+## Includes: scale to zero
+autoscaler:
+  enabled: true
+  image: modelzai/modelz-autoscaler:v0.0.3
+  replicas: 1
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "2Gi"
+  readinessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+
+  livenessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+
+ui:
+  enabled: false
+  replicas: 1
+  image: modelzai/modelz-ui:v0.0.3
+  supabaseUrl: "" 
+  supabaseAnonKey: ""
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+  readinessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+
+  livenessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+
+# Whether to run the database migration procedure
+migration:
+  enabled: false
+  image: ""
+
+apiserver:
+  enabled: true
+  image: modelzai/modelz-apiserver:v0.0.10
+  artifactImageRegistry: ""
+  jwtSecret:
+  dbUrl: ""
+  meteringApiKey: ""
+  meteringPricePlanID: ""
+  stripeWebhookSecret: ""
+  stripeAPIKey: ""
+  mixpanelAPIKey: ""
+  creditOnSignup: 0.5
+  creditOnPaymentMethod: 1.5
+  dueCheckerWhiteList: ""
+  externalFeature:
+    enabled: false
+    unifiedAPIKey: ""
+  replicas: 1
+  noAuth: true
+  upstreamTimeout: "300s"
+  resources:
+    requests:
+      memory: "120Mi"
+      cpu: "100m"
+    limits:
+      cpu: "2"
+      memory: "8Gi"
+  readinessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+
+  livenessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+
+defaultHTTPBackend:
+  enabled: true
+  image: modelzai/default-http-backend:v0.0.4
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+  readinessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+
+  livenessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+
+hfserver:
+  enabled: true
+  image: modelzai/hf-server:v0.0.6
+  cacheDir: /cache/hf-cache-server
+  storageClassName: standard
+  storage: 2Gi
+  nodeSelector: {
+    "ai.tensorchord.node-type": "cache",
+    "cloud.google.com/gke-ephemeral-storage-local-ssd": "true"
+  }
+  localssd:
+    enabled: true
+  resources:
+    requests:
+      ephemeral-storage: "250Gi"
+      cpu: "14"
+      memory: "40Gi"
+    limits: {}
+  readinessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+
+  livenessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+
+gatus:
+  enabled: false 
+  domain: ""
+  image: twinproduction/gatus:v5.3.1
+  configDir: /etc/gatus
+  discordAlert: false
+  discordWebHook: "" 
+  username: ""
+  password: "" 
+  resources:
+    requests:
+      memory: "10Mi"
+    limits:
+      memory: "100Mi"
+  readinessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+  livenessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+
+gateway:
+  enabled: true
+  image: modelzai/modelz-gateway:v0.0.10
+  readTimeout: "305s"
+  writeTimeout: "305s"
+  replicas: 1
+  scaleFromZero: true
+  # change the port when creating multiple releases in the same baremetal cluster
+  nodePort: 31112
+  maxIdleConns: 1024
+  maxIdleConnsPerHost: 1024
+  directFunctions: false
+  # Custom logs provider url. For example modelz-loki would be
+  # "http://ofloki-modelz-loki.modelz:9191/"
+  logsProviderURL: ""
+  # database
+  dbURL: ""
+  resources:
+    requests:
+      memory: "120Mi"
+      cpu: "100m"
+    limits:
+      cpu: "2"
+      memory: "8Gi"
+
+  readinessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+
+  livenessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+
+build:
+  enabled: false 
+  gcp:
+    enabled: false 
+  buildctlBin: "buildctl"
+  builderImage: modelzai/modelz-builder:v0.0.10
+  registry:
+    addr: https://us-central1-docker.pkg.dev
+    token: ""
+
+modelzetes:
+  enabled: true
+  image: modelzai/modelzetes:v0.0.10
+  imagePullPolicy: "IfNotPresent"    # Image pull policy for deployed inference
+  httpProbe: true              # Setting to true will use HTTP for readiness and liveness probe on inference pods
+  setNonRootUser: false        # It's recommended to set this to "true", but test your images before committing to it
+  readinessProbe:
+    initialDelaySeconds: 2
+    timeoutSeconds: 1           # Tuned-in to run checks early and quickly to support fast cold-start from zero replicas
+    periodSeconds: 1            # Reduce to 1 for a faster cold-start, increase higher for lower-CPU usage
+  livenessProbe:
+    initialDelaySeconds: 2
+    timeoutSeconds: 1
+    periodSeconds: 1           # Reduce to 1 for a faster cold-start, increase higher for lower-CPU usage
+  startupProbe:
+    initialDelaySeconds: 0
+    timeoutSeconds: 1
+    periodSeconds: 2
+  resources:
+    requests:
+      memory: "120Mi"
+      cpu: "100m"
+    limits:
+      cpu: "1000m"
+      memory: "3Gi"
+  huggingfacePullThroughCache:
+    enabled: true
+
+email:
+  sendgridAPIKey: "" 
+  sendgridTemplateReachSpendLimit: "" 
+  sendgridTemplateSuspend: ""
+  sendgridTemplateTeamInvite: "" 
+
+biller:
+  enabled: false
+  image: modelzai/modelz-biller:v0.0.10
+  dueCheckerImage: modelzai/modelz-due-checker:v0.0.10
+  dueCheckerWhiteList: ""
+  dbUrl: "" 
+  meteringApiKey: "" 
+  meteringApiName: compute-seconds-sum
+  replicas: 1
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "2Gi"
+
+# monitoring and auto-scaling components
+# both components
+prometheus:
+  enabled: true
+  image: prom/prometheus:v2.41.0
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "3Gi"
+  annotations: {}
+
+alertmanager:
+  enabled: false
+  image: prom/alertmanager:v0.25.0
+  resources:
+    requests:
+      memory: "25Mi"
+    limits:
+      memory: "1Gi"
+
+grafanaAgent:
+  enabled: false 
+  lokiURL: ""
+  cluster: "" 
+  namespace: kube-system
+  auth:
+    username: ""
+    password: ""
+
+loki:
+  enabled: false
+  url: ""
+  user: ""
+  token: ""
+
+ingressOperator:
+  enabled: false 
+  image: modelzai/ingress-operator:v0.0.1
+  replicas: 1
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "50m"
+    limits:
+      cpu: "500m"
+      memory: "2Gi"
+
+nodeSelector: {
+  "ai.tensorchord.node-type": "control"
+}
+
+tolerations: []
+
+affinity: {}
+
+kubernetesDNSDomain: cluster.local
+
+istio:
+  mtls: false
+
+gatewayExternal:
+  annotations: {}
+
+k8sVersionOverride: "" #  Allow kubeVersion to be overridden for the ingress creation
+
+ssl:
+  enabled: false
+  secretName:
+    cloud: modelz-cloud-cert
+    dataplane: modelz-new-cert
+    status: modelz-status-cert
+
+# kube-state-metrics
+ksm:
+  enabled: false
+  # Default values for kube-state-metrics.
+  prometheusScrape: true
+  image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.8.2
+  imagePullPolicy: IfNotPresent
+  replicas: 1
+  # List of additional cli arguments to configure kube-state-metrics
+  # for example: --enable-gzip-encoding, --log-file, etc.
+  # all the possible args can be found here: https://github.com/kubernetes/kube-state-metrics/blob/master/docs/cli-arguments.md
+  extraArgs: []
+  service:
+    port: 8080
+    # Default to clusterIP for backward compatibility
+    type: ClusterIP
+    nodePort: 0
+    loadBalancerIP: ""
+    # Only allow access to the loadBalancerIP from these IPs
+    loadBalancerSourceRanges: []
+    clusterIP: ""
+    annotations: {}
+  hostNetwork: false
+  securityContext:
+    enabled: true
+    runAsGroup: 65534
+    runAsUser: 65534
+    fsGroup: 65534
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  ## Specify security settings for a Container
+  ## Allows overrides and additional options compared to (Pod) securityContext
+  ## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+  ## Node labels for pod assignment
+  ## Ref: https://kubernetes.io/docs/user-guide/node-selection/
+  nodeSelector: {}
+  ## Affinity settings for pod assignment
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+  affinity: {}
+  ## Tolerations for pod assignment
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+  tolerations: []
+  ## Topology spread constraints for pod assignment
+  ## Ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
+  topologySpreadConstraints: []
+  # Annotations to be added to the deployment/statefulset
+  annotations: {}
+  ## Assign a PriorityClassName to pods if set
+  # priorityClassName: ""
+  # Ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
+  podDisruptionBudget: {}
+  # Comma-separated list of metrics to be exposed.
+  # This list comprises of exact metric names and/or regex patterns.
+  # The allowlist and denylist are mutually exclusive.
+  metricAllowlist: []
+  # Comma-separated list of metrics not to be enabled.
+  # This list comprises of exact metric names and/or regex patterns.
+  # The allowlist and denylist are mutually exclusive.
+  metricDenylist: []
+  # Comma-separated list of additional Kubernetes label keys that will be used in the resource's
+  # labels metric. By default the metric contains only name and namespace labels.
+  # To include additional labels, provide a list of resource names in their plural form and Kubernetes
+  # label keys you would like to allow for them (Example: '=namespaces=[k8s-label-1,k8s-label-n,...],pods=[app],...)'.
+  # A single '*' can be provided per resource instead to allow any labels, but that has
+  # severe performance implications (Example: '=pods=[*]').
+  metricLabelsAllowlist: []
+    # - namespaces=[k8s-label-1,k8s-label-n]
+  # Comma-separated list of Kubernetes annotations keys that will be used in the resource'
+  # labels metric. By default the metric contains only name and namespace labels.
+  # To include additional annotations provide a list of resource names in their plural form and Kubernetes
+  # annotation keys you would like to allow for them (Example: '=namespaces=[kubernetes.io/team,...],pods=[kubernetes.io/team],...)'.
+  # A single '*' can be provided per resource instead to allow any annotations, but that has
+  # severe performance implications (Example: '=pods=[*]').
+  metricAnnotationsAllowList: []
+    # - pods=[k8s-annotation-1,k8s-annotation-n]
+  # Available collectors for kube-state-metrics.
+  # By default, all available resources are enabled, comment out to disable.
+  collectors:
+    # - certificatesigningrequests
+    # - configmaps
+    # - cronjobs
+    # - daemonsets
+    - deployments
+    # - endpoints
+    # - horizontalpodautoscalers
+    # - ingresses
+    # - jobs
+    # - leases
+    # - limitranges
+    # - mutatingwebhookconfigurations
+    # - namespaces
+    # - networkpolicies
+    # - nodes
+    # - persistentvolumeclaims
+    # - persistentvolumes
+    # - poddisruptionbudgets
+    - pods
+    # - replicasets
+    # - replicationcontrollers
+    # - resourcequotas
+    # - secrets
+    # - services
+    # - statefulsets
+    # - storageclasses
+    # - validatingwebhookconfigurations
+    # - volumeattachments
+    # - verticalpodautoscalers # not a default resource, see also: https://github.com/kubernetes/kube-state-metrics#enabling-verticalpodautoscalers
+  # If releaseNamespace and namespaces are both set a merged list will be collected.
+  releaseNamespace: false
+  # Comma-separated list(string) or yaml list of namespaces to be enabled for collecting resources. By default all namespaces are collected.
+  namespaces: ""
+  # Comma-separated list of namespaces not to be enabled. If namespaces and namespaces-denylist are both set,
+  # only namespaces that are excluded in namespaces-denylist will be used.
+  namespacesDenylist: ""
+  ## Override the deployment namespace
+  ##
+  namespaceOverride: ""
+  resources:
+    # We usually recommend not to specify default resources and to leave this as a conscious
+    # choice for the user. This also increases chances charts run on environments with little
+    # resources, such as Minikube. If you do want to specify resources, uncomment the following
+    # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+    limits:
+      cpu: 100m
+      memory: 64Mi
+    requests:
+      cpu: 10m
+      memory: 32Mi
+  # volumeMounts are used to add custom volume mounts to deployment.
+  # See example below
+  volumeMounts: []
+  #  - mountPath: /etc/config
+  #    name: config-volume
+  # volumes are used to add custom volumes to deployment
+  # See example below
+  volumes: []
+  #  - configMap:
+  #      name: cm-for-volume
+  #    name: config-volume
+
+dcgm:
+  enabled: false
+  image:
+    repository: nvcr.io/nvidia/cloud-native/dcgm
+    tag: 2.3.5-1-ubuntu20.04
+    pullPolicy: IfNotPresent
+  cloudAccelerateNodeAffinityKey: cloud.google.com/gke-accelerator
+  containerPort: 5555
+  hostPort: 5555
+  exporter:
+    containerPort: 9400
+    image:
+      repository: nvcr.io/nvidia/k8s/dcgm-exporter
+      tag: 2.3.5-2.6.5-ubuntu20.04
+      pullPolicy: IfNotPresent

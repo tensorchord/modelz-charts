@@ -1,0 +1,74 @@
+{{- if .Values.kubefledged.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: {{ template "modelz.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    component: kubefledged
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  name: kubefledged
+  namespace: {{ .Release.Namespace | quote }}
+spec:
+  replicas: {{ .Values.kubefledged.replicas }}
+  selector:
+    matchLabels:
+      app: kubefledged
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+      labels:
+        app: kubefledged
+    spec:
+      priorityClassName: {{ .Values.priorityClass.modelz }}
+      serviceAccountName: kubefledged
+      imagePullSecrets:
+      - name: {{ .Values.imagePullSecrets }}
+      containers:
+      - name: operator
+        args:
+        - "--stderrthreshold={{ .Values.kubefledged.args.controllerLogLevel }}"
+        - "--image-pull-deadline-duration={{ .Values.kubefledged.args.controllerImagePullDeadlineDuration }}"
+        - "--image-cache-refresh-frequency={{ .Values.kubefledged.args.controllerImageCacheRefreshFrequency }}"
+        - "--image-pull-policy={{ .Values.kubefledged.args.controllerImagePullPolicy }}"
+        - "--image-delete-job-host-network={{ .Values.kubefledged.args.controllerImageDeleteJobHostNetwork }}"
+      {{- if .Values.kubefledged.args.controllerServiceAccountName }}
+        - "--service-account-name={{ .Values.kubefledged.args.controllerServiceAccountName }}"
+      {{- end }}
+      {{- if .Values.kubefledged.args.controllerJobPriorityClassName }}
+        - "--job-priority-class-name={{ .Values.kubefledged.args.controllerJobPriorityClassName }}"
+      {{- end }}
+      {{- if .Values.kubefledged.args.controllerJobRetentionPolicy }}
+        - "--job-retention-policy={{ .Values.kubefledged.args.controllerJobRetentionPolicy }}"
+      {{- end }}
+      {{- if .Values.kubefledged.args.controllerCRISocketPath }}
+        - "--cri-socket-path={{ .Values.kubefledged.args.controllerCRISocketPath }}"
+      {{- end }}
+        env:
+        - name: KUBEFLEDGED_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: KUBEFLEDGED_CRI_CLIENT_IMAGE
+          value: {{ .Values.kubefledged.kubefledgedCRIClientRepository | quote }}
+        - name: BUSYBOX_IMAGE
+          value: {{ .Values.kubefledged.busyboxImageRepository | quote }}
+        resources:
+          {{- .Values.kubefledged.resources | toYaml | nindent 10 }}
+        image: {{ .Values.kubefledged.image }}
+        imagePullPolicy: {{ .Values.imagePullPolicy }}
+    {{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+{{- end }}

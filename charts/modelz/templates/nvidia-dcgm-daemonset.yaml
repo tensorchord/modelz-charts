@@ -1,0 +1,50 @@
+{{- if .Values.dcgm.enabled }}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ .Release.Name }}-nvidia-dcgm
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    app: {{ template "modelz.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    component: nvidia-dcgm
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+spec:
+  selector:
+    matchLabels:
+      app: nvidia-dcgm
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: nvidia-dcgm
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: {{ .Values.dcgm.cloudAccelerateNodeAffinityKey }}
+                operator: Exists
+      tolerations:
+      - operator: "Exists"
+      volumes:
+      - name: nvidia-install-dir-host
+        hostPath:
+          path: /home/kubernetes/bin/nvidia
+      containers:
+      - image: {{ .Values.dcgm.image.repository }}:{{ .Values.dcgm.image.tag }}
+        imagePullPolicy: {{ .Values.dcgm.image.pullPolicy }}
+        command: ["nv-hostengine", "-n", "-b", "ALL"]
+        ports:
+        - containerPort: {{ .Values.dcgm.containerPort }} 
+          hostPort: {{ .Values.dcgm.hostPort }} 
+        name: nvidia-dcgm
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: nvidia-install-dir-host
+          mountPath: /usr/local/nvidia
+{{- end }}

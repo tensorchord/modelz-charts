@@ -1,0 +1,107 @@
+{{- if .Values.ksm.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-kube-state-metrics
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    app: {{ template "modelz.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    component: kube-state-metrics
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  {{- if .Values.ksm.annotations }}
+  annotations:
+{{ toYaml .Values.ksm.annotations | indent 4 }}
+  {{- end }}
+spec:
+  selector:
+    matchLabels:
+      app: kube-state-metrics
+  replicas: {{ .Values.ksm.replicas }}
+  template:
+    metadata:
+      labels:
+        app: kube-state-metrics
+    spec:
+      hostNetwork: {{ .Values.ksm.hostNetwork }}
+      serviceAccountName: {{ .Release.Name }}-kube-state-metrics
+      {{- if .Values.ksm.securityContext.enabled }}
+      securityContext: {{- omit .Values.ksm.securityContext "enabled" | toYaml | nindent 8 }}
+      {{- end }}
+      priorityClassName: {{ .Values.priorityClass.modelz }}
+      containers:
+      - name: kube-state-metrics
+        args:
+        {{-  if .Values.ksm.extraArgs  }}
+        {{- .Values.ksm.extraArgs | toYaml | nindent 8 }}
+        {{-  end  }}
+        - --port={{ .Values.ksm.service.port }}
+        {{-  if .Values.ksm.collectors  }}
+        - --resources={{ .Values.ksm.collectors | join "," }}
+        {{-  end  }}
+        {{- if .Values.ksm.metricLabelsAllowlist }}
+        - --metric-labels-allowlist={{ .Values.ksm.metricLabelsAllowlist | join "," }}
+        {{- end }}
+        {{- if .Values.ksm.metricAnnotationsAllowList }}
+        - --metric-annotations-allowlist={{ .Values.ksm.metricAnnotationsAllowList | join "," }}
+        {{- end }}
+        {{- if .Values.ksm.metricAllowlist }}
+        - --metric-allowlist={{ .Values.ksm.metricAllowlist | join "," }}
+        {{- end }}
+        {{- if .Values.ksm.metricDenylist }}
+        - --metric-denylist={{ .Values.ksm.metricDenylist | join "," }}
+        {{- end }}
+        {{- $namespaces := list }}
+        {{- if .Values.ksm.namespaces }}
+        {{- range $ns := join "," .Values.ksm.namespaces | split "," }}
+        {{- $namespaces = append $namespaces (tpl $ns $) }}
+        {{- end }}
+        {{- end }}
+        {{- if .Values.ksm.releaseNamespace }}
+        {{- $namespaces = append $namespaces ( include "ksm.namespace" . ) }}
+        {{- end }}
+        {{- if $namespaces }}
+        - --namespaces={{ $namespaces | mustUniq | join "," }}
+        {{- end }}
+        {{- if .Values.ksm.namespacesDenylist }}
+        - --namespaces-denylist={{ tpl (.Values.ksm.namespacesDenylist | join ",") $ }}
+        {{- end }}
+        imagePullPolicy: {{ .Values.ksm.imagePullPolicy }}
+        image: {{ .Values.ksm.image }}
+        ports:
+        - containerPort: {{ .Values.ksm.service.port | default 8080}}
+          name: "http"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: {{ .Values.ksm.service.port | default 8080}}
+          initialDelaySeconds: 5
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /
+            port: {{ .Values.ksm.service.port | default 8080}}
+          initialDelaySeconds: 5
+          timeoutSeconds: 5
+        {{- if .Values.ksm.resources }}
+        resources:
+{{ toYaml .Values.ksm.resources | indent 10 }}
+{{- end }}
+{{- if .Values.containerSecurityContext }}
+        securityContext:
+{{ toYaml .Values.containerSecurityContext | indent 10 }}
+{{- end }}
+      {{- if .Values.ksm.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.ksm.nodeSelector | indent 8 }}
+      {{- end }}
+      {{- if .Values.ksm.tolerations }}
+      tolerations:
+{{ toYaml .Values.ksm.tolerations | indent 8 }}
+      {{- end }}
+      {{- if .Values.ksm.topologySpreadConstraints }}
+      topologySpreadConstraints:
+{{ toYaml .Values.ksm.topologySpreadConstraints | indent 8 }}
+      {{- end }}
+{{- end }}

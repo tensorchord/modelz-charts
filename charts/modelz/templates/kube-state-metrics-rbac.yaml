@@ -1,0 +1,226 @@
+{{- if .Values.ksm.enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Release.Name }}-kube-state-metrics
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    app: {{ template "modelz.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    component: kube-state-metrics
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+---
+{{- if .Values.rbac }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Release.Name }}-kube-state-metrics
+  labels:
+    app: {{ template "modelz.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    component: kube-state-metrics
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+rules:
+{{ if has "certificatesigningrequests" $.Values.ksm.collectors }}
+- apiGroups: ["certificates.k8s.io"]
+  resources:
+  - certificatesigningrequests
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if has "configmaps" $.Values.ksm.collectors }}
+- apiGroups: [""]
+  resources:
+  - configmaps
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if has "cronjobs" $.Values.ksm.collectors }}
+- apiGroups: ["batch"]
+  resources:
+  - cronjobs
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if has "daemonsets" $.Values.ksm.collectors }}
+- apiGroups: ["extensions", "apps"]
+  resources:
+  - daemonsets
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if has "deployments" $.Values.ksm.collectors }}
+- apiGroups: ["extensions", "apps"]
+  resources:
+  - deployments
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if has "endpoints" $.Values.ksm.collectors }}
+- apiGroups: [""]
+  resources:
+  - endpoints
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if has "horizontalpodautoscalers" $.Values.ksm.collectors }}
+- apiGroups: ["autoscaling"]
+  resources:
+  - horizontalpodautoscalers
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if has "ingresses" $.Values.ksm.collectors }}
+- apiGroups: ["extensions", "networking.k8s.io"]
+  resources:
+  - ingresses
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if has "jobs" $.Values.ksm.collectors }}
+- apiGroups: ["batch"]
+  resources:
+  - jobs
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if has "leases" $.Values.ksm.collectors }}
+- apiGroups: ["coordination.k8s.io"]
+  resources:
+  - leases
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if has "limitranges" $.Values.ksm.collectors }}
+- apiGroups: [""]
+  resources:
+  - limitranges
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if has "mutatingwebhookconfigurations" $.Values.ksm.collectors }}
+- apiGroups: ["admissionregistration.k8s.io"]
+  resources:
+    - mutatingwebhookconfigurations
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if has "namespaces" $.Values.ksm.collectors }}
+- apiGroups: [""]
+  resources:
+  - namespaces
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if has "networkpolicies" $.Values.ksm.collectors }}
+- apiGroups: ["networking.k8s.io"]
+  resources:
+  - networkpolicies
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if has "nodes" $.Values.ksm.collectors }}
+- apiGroups: [""]
+  resources:
+  - nodes
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if has "persistentvolumeclaims" $.Values.ksm.collectors }}
+- apiGroups: [""]
+  resources:
+  - persistentvolumeclaims
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if has "persistentvolumes" $.Values.ksm.collectors }}
+- apiGroups: [""]
+  resources:
+  - persistentvolumes
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if has "poddisruptionbudgets" $.Values.ksm.collectors }}
+- apiGroups: ["policy"]
+  resources:
+    - poddisruptionbudgets
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if has "pods" $.Values.ksm.collectors }}
+- apiGroups: [""]
+  resources:
+  - pods
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if has "replicasets" $.Values.ksm.collectors }}
+- apiGroups: ["extensions", "apps"]
+  resources:
+  - replicasets
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if has "replicationcontrollers" $.Values.ksm.collectors }}
+- apiGroups: [""]
+  resources:
+  - replicationcontrollers
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if has "resourcequotas" $.Values.ksm.collectors }}
+- apiGroups: [""]
+  resources:
+  - resourcequotas
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if has "secrets" $.Values.ksm.collectors }}
+- apiGroups: [""]
+  resources:
+  - secrets
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if has "services" $.Values.ksm.collectors }}
+- apiGroups: [""]
+  resources:
+  - services
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if has "statefulsets" $.Values.ksm.collectors }}
+- apiGroups: ["apps"]
+  resources:
+  - statefulsets
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if has "storageclasses" $.Values.ksm.collectors }}
+- apiGroups: ["storage.k8s.io"]
+  resources:
+    - storageclasses
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if has "validatingwebhookconfigurations" $.Values.ksm.collectors }}
+- apiGroups: ["admissionregistration.k8s.io"]
+  resources:
+    - validatingwebhookconfigurations
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if has "volumeattachments" $.Values.ksm.collectors }}
+- apiGroups: ["storage.k8s.io"]
+  resources:
+    - volumeattachments
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if has "verticalpodautoscalers" $.Values.ksm.collectors }}
+- apiGroups: ["autoscaling.k8s.io"]
+  resources:
+    - verticalpodautoscalers
+  verbs: ["list", "watch"]
+{{ end -}}
+{{ if $.Values.ksm.extraRules }}
+{{ toYaml $.Values.ksm.extraRules }}
+{{ end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Release.Name }}-kube-state-metrics
+  labels:
+    app: {{ template "modelz.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    component: kube-state-metrics
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Release.Name }}-kube-state-metrics
+subjects:
+- kind: ServiceAccount
+  name: {{ .Release.Name }}-kube-state-metrics
+  namespace: {{ .Release.Namespace | quote }}
+---
+{{- end }}
+{{- end }}

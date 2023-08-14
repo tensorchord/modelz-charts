@@ -1,0 +1,23 @@
+{{- if .Values.apiserver.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apiserver
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    app: {{ template "modelz.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    component: apiserver
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      name: http
+      protocol: TCP
+      targetPort: http
+  selector:
+    app: apiserver
+{{- end }}

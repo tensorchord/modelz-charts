@@ -1,0 +1,187 @@
+{{- if .Values.gateway.enabled }}
+{{- $providerReadTimeout :=  default .Values.gateway.readTimeout .Values.modelzetes.readTimeout }}
+{{- $providerWriteTimeout :=  default .Values.gateway.writeTimeout .Values.modelzetes.writeTimeout }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: {{ template "modelz.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    component: gateway
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  name: gateway
+  namespace: {{ .Release.Namespace | quote }}
+spec:
+  replicas: {{ .Values.gateway.replicas }}
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8082"
+      labels:
+        app: gateway
+    spec:
+      priorityClassName: {{ .Values.priorityClass.modelz }}
+      {{- if .Values.modelzetes.enabled }}
+      serviceAccountName: {{ .Release.Name }}-operator
+      {{- end }}
+      volumes:
+      - name: modelzetes-temp-volume
+        emptyDir: {}
+      {{- if .Values.basic_auth }}
+      - name: auth
+        secret:
+          secretName: basic-auth
+      {{- end }}
+      imagePullSecrets:
+      - name: {{ .Values.imagePullSecrets }}
+      containers:
+      - name: agent
+        resources:
+          {{- .Values.gateway.resources | toYaml | nindent 12 }}
+        image: {{ .Values.gateway.image }}
+        imagePullPolicy: {{ .Values.imagePullPolicy }}
+        command:
+          - /usr/bin/agent
+          {{- if .Values.debug }}
+          - --debug
+          {{- end }}
+        {{- if .Values.securityContext }}
+        securityContext:
+          readOnlyRootFilesystem: true
+          runAsUser: 10001
+        {{- end }}
+        livenessProbe:
+          {{- if $.Values.gateway.livenessProbe }}
+          initialDelaySeconds: {{ $.Values.gateway.livenessProbe.initialDelaySeconds | default 0 }}
+          periodSeconds: {{ $.Values.gateway.livenessProbe.periodSeconds | default 10 }}
+          timeoutSeconds: {{ $.Values.gateway.livenessProbe.timeoutSeconds | default 5 }}
+          failureThreshold: {{ $.Values.gateway.livenessProbe.failureThreshold | default 3 }}
+          successThreshold: {{ $.Values.gateway.livenessProbe.successThreshold | default 1 }}
+          {{- end }}
+          {{- if .Values.httpProbe }}
+          httpGet:
+            path: /healthz
+            port: 8080
+          {{- else }}
+          exec:
+            command:
+            - wget
+            - --quiet
+            - --tries=1
+            - --timeout=5
+            - --spider
+            - http://localhost:8080/healthz
+          {{- end }}
+        readinessProbe:
+          {{- if $.Values.gateway.readinessProbe }}
+          initialDelaySeconds: {{ $.Values.gateway.readinessProbe.initialDelaySeconds | default 0 }}
+          periodSeconds: {{ $.Values.gateway.readinessProbe.periodSeconds | default 10 }}
+          timeoutSeconds: {{ $.Values.gateway.readinessProbe.timeoutSeconds | default 5 }}
+          failureThreshold: {{ $.Values.gateway.readinessProbe.failureThreshold | default 3 }}
+          successThreshold: {{ $.Values.gateway.readinessProbe.successThreshold | default 1 }}
+          {{- end }}
+          {{- if .Values.httpProbe }}
+          httpGet:
+            path: /healthz
+            port: 8080
+          {{- else }}
+          exec:
+            command:
+            - wget
+            - --quiet
+            - --tries=1
+            - --timeout=5
+            - --spider
+            - http://localhost:8080/healthz
+          {{- end }}
+        env:
+        - name: MODELZ_AGENT_SERVER_PORT
+          value: "8080"
+        - name: MODELZ_AGENT_SERVER_READ_TIMEOUT
+          value: "{{ .Values.gateway.readTimeout }}"
+        - name: MODELZ_AGENT_SERVER_WRITE_TIMEOUT
+          value: "{{ .Values.gateway.writeTimeout }}"
+        - name: MODELZ_AGENT_METRICS_PROMETHEUS_PORT
+          value: "9090"
+        - name: MODELZ_AGENT_METRICS_PROMETHEUS_HOST
+          value: "prometheus.{{ .Release.Namespace }}"
+        - name: MODELZ_AGENT_BUILDER_IMAGE
+          value: {{ .Values.build.builderImage | quote }}
+        - name: MODELZ_AGENT_BUILDKITD_ADDRESS
+          value: "tcp://buildkitd.{{ .Release.Namespace }}:1234"
+        - name: MODELZ_AGENT_BUILDCTL_BIN
+          value: {{ .Values.build.buildctlBin | quote }}
+        - name: MODELZ_AGENT_BUILD_REGISTRY
+          value: {{ .Values.build.registry.addr | quote }}
+        - name: MODELZ_AGENT_BUILD_REGISTRY_TOKEN
+          value: {{ .Values.build.registry.token | quote }}
+        - name: MODELZ_AGENT_INGRESS_DOMAIN
+          value: {{ .Values.dataplaneDomain | quote }}
+        - name: MODELZ_AGENT_INGRESS_NAMESPACE
+          value: {{ .Release.Namespace | quote }}
+        - name: MODELZ_AGENT_DB_URL
+          value: {{ .Values.gateway.dbURL | quote }}
+        - name: MODELZ_AGENT_EVENT_ENABLED
+          value: "true"
+        - name: MODELZ_AGENT_INGRESS_ENABLED
+          value: "true"
+        - name: MODELZ_AGENT_BUILD_ENABLED
+          value: {{ .Values.build.enabled | quote }}
+        {{- if .Values.imagePullSecrets }}
+        - name: MODELZ_AGENT_BUILD_IMAGE_PULL_SECRET
+          value: {{ .Values.imagePullSecrets | quote }}
+        {{- end }}
+        {{- if .Values.loki.enabled }}
+        - name: MODELZ_AGENT_LOGS_LOKI_URL
+          value: {{ .Values.loki.url | quote }}
+        - name: MODELZ_AGENT_LOGS_LOKI_USER
+          value: {{ .Values.loki.user | quote }}
+        - name: MODELZ_AGENT_LOGS_LOKI_TOKEN
+          value: {{ .Values.loki.token | quote }}
+        {{- end }}
+        - name: direct_functions
+        {{- if .Values.gateway.directFunctions }}
+          value: "{{.Values.gateway.directFunctions}}"
+        {{- else}}
+          value: "false"
+        {{- end }}
+        - name: direct_functions_suffix
+          value: "{{ .Release.Namespace }}.svc.{{ .Values.kubernetesDNSDomain }}"
+        {{- if .Values.basic_auth }}
+        - name: basic_auth
+          value: "true"
+        - name: secret_mount_path
+          value: "/var/secrets"
+        {{- end }}
+        - name: max_idle_conns
+          value: "{{ .Values.gateway.maxIdleConns }}"
+        - name: max_idle_conns_per_host
+          value: "{{ .Values.gateway.maxIdleConnsPerHost }}"
+        volumeMounts:
+        {{- if .Values.basic_auth }}
+        - name: auth
+          readOnly: true
+          mountPath: "/var/secrets"
+        {{- end }}
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+    {{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+{{- end }}
