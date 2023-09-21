@@ -3,6 +3,24 @@ entries:
   modelz:
   - apiVersion: v2
     appVersion: v0.3.7
+    created: "2023-09-21T16:04:57.464167893+08:00"
+    digest: 1937a5de76878937a100d10d52853e583ce78e9a51c639de3cb350bfc20d8d3e
+    home: https://tensorchord.ai
+    keywords:
+    - serverless
+    - platform
+    - inference
+    - llm
+    maintainers:
+    - email: modelz-support@tensorchord.ai
+      name: modelz-support
+    name: modelz
+    type: application
+    urls:
+    - https://github.com/tensorchord/modelz-charts/releases/download/modelz-0.0.2/modelz-0.0.2.tgz
+    version: 0.0.2
+  - apiVersion: v2
+    appVersion: v0.3.7
     created: "2023-08-14T16:43:10.85597818+08:00"
     digest: 12138a75d60a994126f3c13d744c5799a0a0ea16998912733f886c9d8bc54f98
     home: https://tensorchord.ai
@@ -19,4 +37,4 @@ entries:
     urls:
     - https://github.com/tensorchord/modelz-charts/releases/download/modelz-0.0.1/modelz-0.0.1.tgz
     version: 0.0.1
-generated: "2023-08-14T16:43:10.855984882+08:00"
+generated: "2023-09-21T16:04:57.4642044+08:00"
